@@ -31,6 +31,8 @@ int checkCoordinateReveal(int* coordinates, int  (*playerBoard)[4][4]);
 
 int checkCoordinateFlag(int* coordinates, int  (*playerBoard)[4][4]);
 
+int checkCoordinateRemFlag(int* coordinates, int  (*playerBoard)[4][4]);
+
 void resetBoard(int  (*playerBoard)[4][4]);
 
 //Client receives a message

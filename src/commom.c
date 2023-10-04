@@ -122,7 +122,7 @@ void printBoard(int (*board)[4][4]){
         for(int j = 0; j < 4; j++){
 
             //Map the val in the board to the respective character
-            int val = *board[i][j];
+            int val = (*board)[i][j];
             char mappedChar;
             switch (val)
             {
@@ -153,7 +153,7 @@ void printBoard(int (*board)[4][4]){
 void copyBoard(int  (*destination)[4][4], int  (*source)[4][4]){
     for(int i = 0; i < 4; i++){
         for(int j = 0; j < 4; j++){
-            *destination[i][j] = *source[i][j];
+            (*destination)[i][j] = (*source)[i][j];
         }
     }
 }
@@ -163,7 +163,7 @@ int checkCoordinateReveal(int* coordinates, int  (*playerBoard)[4][4]){
     int x = coordinates[0], y = coordinates[1];
     if(x >= 4 || x < 0){ return 9; }
     else if(y >= 4 || y < 0){ return 9; }
-    else if(*playerBoard[x][y] != -2){ return 11; }
+    else if((*playerBoard)[x][y] != -2 && (*playerBoard)[x][y] != -3){ return 11; }
 
     return 0;
 }
@@ -173,8 +173,16 @@ int checkCoordinateFlag(int* coordinates, int  (*playerBoard)[4][4]){
     int x = coordinates[0], y = coordinates[1];
     if(x >= 4 || x < 0){ return 9; }
     else if(y >= 4 || y < 0){ return 9; }
-    else if(*playerBoard[x][y] != -3){ return 12; }
-    else if(*playerBoard[x][y] != -2){ return 13; }
+    else if((*playerBoard)[x][y] == -3){ return 12; }
+    else if((*playerBoard)[x][y] >= 0){ return 13; }
+
+    return 0;
+}
+
+int checkCoordinateRemFlag(int* coordinates, int  (*playerBoard)[4][4]){
+    int x = coordinates[0], y = coordinates[1];
+    if(x >= 4 || x < 0){ return 9; }
+    else if(y >= 4 || y < 0){ return 9; }
 
     return 0;
 }
@@ -183,7 +191,7 @@ int checkCoordinateFlag(int* coordinates, int  (*playerBoard)[4][4]){
 void resetBoard(int  (*playerBoard)[4][4]){
     for(int i = 0; i < 4; i++){
         for(int j = 0; j < 4; j++){
-            *playerBoard[i][j] = -2;
+            (*playerBoard)[i][j] = -2;
         }
     }
 }
@@ -261,21 +269,21 @@ void handleMessage_server(struct action msg, struct action* response, int  (*gam
         
 
         //If the revealed point has a bomb:
-        if(*gameBoard[x][y] == -1){
-            *resType = 8;
+        if((*gameBoard)[x][y] == -1){
+            (*resType) = 8;
             copyBoard(resBoard, gameBoard);
         }
         else{
-            *resBoard[x][y] = *gameBoard[x][y];
-            *revealed += 1;
+            (*resBoard)[x][y] = (*gameBoard)[x][y];
+            (*revealed) += 1;
 
             //If the player reveals 13 points, the game is completed
-            if(*revealed == 13){
-                *resType = 6;
+            if((*revealed) == 13){
+                (*resType) = 6;
                 copyBoard(resBoard, gameBoard);
             }
             else{
-                *resType = 3;
+                (*resType) = 3;
             }
         }
         break;
@@ -283,15 +291,15 @@ void handleMessage_server(struct action msg, struct action* response, int  (*gam
     //Client tries to insert a flag
     case 2:
        
-        *resBoard[x][y] = -2;
-        *resType = 3;
+        (*resBoard)[x][y] = -3;
+        (*resType) = 3;
         break;
 
     case 4:
-        *resType = 3;
-        if(*resBoard[x][y] == -3){
-            *resBoard[x][y] = -2;
+        if((*resBoard)[x][y] == -3){
+            (*resBoard)[x][y] = -2;
         }
+        *resType = 3;
         break;
 
     case 5:
@@ -311,6 +319,7 @@ int processClientMessage(const char* message, char* res, struct action* act){
 
     //If the client enter the start action
     if(!strcmp(message, "start\n")){
+        act->type = 0;
         return 0; 
     }
 
@@ -331,8 +340,8 @@ int processClientMessage(const char* message, char* res, struct action* act){
                 int check = checkCoordinateReveal(inputCoordinates, &act->board);
                 if(!check)
                 {
+                    coordinates[0] = inputCoordinates[0];
                     coordinates[1] = inputCoordinates[1];
-                    coordinates[2] = inputCoordinates[2];
                     act->type = 1; 
                     return 1; 
                 }
@@ -371,8 +380,8 @@ int processClientMessage(const char* message, char* res, struct action* act){
                 int check = checkCoordinateFlag(inputCoordinates, playerBoard);
                 if(!check)
                 {
+                    coordinates[0] = inputCoordinates[0];
                     coordinates[1] = inputCoordinates[1];
-                    coordinates[2] = inputCoordinates[2];
                     act->type = 2;  
                     return 2; 
                 }
@@ -411,13 +420,24 @@ int processClientMessage(const char* message, char* res, struct action* act){
             {
                 int inputCoordinates[2] = {x - '0', y - '0'};
 
-                int check = checkCoordinateFlag(inputCoordinates, playerBoard);
+                int check = checkCoordinateRemFlag(inputCoordinates, playerBoard);
                 if(!check)
                 {
-                    coordinates[1] = inputCoordinates[1];
-                    coordinates[2] = inputCoordinates[2];
-                    act->type = 4;  
-                    return 4; 
+                    int x = inputCoordinates[0], y = inputCoordinates[1];
+
+                    //If tries to remove a flag that doesnt exist
+                    if((*playerBoard)[x][y] != -3)
+                    {
+                        act->type = 0;
+                        return 0;
+                    }
+                    else
+                    {
+                        coordinates[0] = inputCoordinates[0];
+                        coordinates[1] = inputCoordinates[1];
+                        act->type = 4;  
+                        return 4; 
+                    }
                 }
                 else{
                     strcpy(res, "error: invalid cell");
@@ -433,12 +453,12 @@ int processClientMessage(const char* message, char* res, struct action* act){
     }
 
     //If its reset message
-    else if(!strcmp(message, "reset")){
+    else if(!strcmp(message, "reset\n")){
         act->type = 5; 
         return 5; 
     }
     //If its exit message
-    else if(!strcmp(message, "exit")){
+    else if(!strcmp(message, "exit\n")){
         act->type = 7; 
         return 7;
     }

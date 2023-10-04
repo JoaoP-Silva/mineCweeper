@@ -73,10 +73,17 @@ int main(int argc, char **argv)
                 fgets(buf, BUFSIZ, stdin);
             }
         }while(inputType == -1);
-        
+
         char sendbuf[sizeof(struct action)];
         memcpy(sendbuf, &act, sizeof(struct action));
         size_t count = send(s, sendbuf, sizeof(struct action), 0);
+
+        //Whether client required exit
+        if(inputType == 7)
+        {
+            close(s);
+            exit(EXIT_SUCCESS);
+        }
         
         char recvbuf[sizeof(struct action)];
         ssize_t sz = read(s, recvbuf, sizeof(struct action));

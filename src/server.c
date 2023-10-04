@@ -80,7 +80,7 @@ int main(int argc, char **argv)
         }
     }
 
-    bool startedGame = 0;
+    bool startedGame = false;
 
     //Variable to save the number of points revealed
     int revealed = 0;
@@ -108,17 +108,28 @@ int main(int argc, char **argv)
 
                 struct  action rcv, res;
                 memcpy(&rcv, buf, sizeof(struct action));
-                handleMessage_server(rcv, &res, &gameBoard, &revealed, &startedGame);
-
-                //Whether the client win, lose or exit, close connection
-                if(rcv.type == 7 || res.type == 8 || res.type == 6)
+                
+                //Whether the client exit, close connection
+                if(rcv.type == 7)
                 {
                     close(csock);
                     exit(EXIT_SUCCESS);
                 }
 
+                handleMessage_server(rcv, &res, &gameBoard, &revealed, &startedGame);
+
+                //Captures whether is the game start
+                if(rcv.type == 0 && !startedGame){ startedGame = true; }
+
                 memcpy(buf, &res, sizeof(struct action));
                 send(csock, buf, sizeof(struct action), 0);
+
+                //Whether the client win or lose, close connection after send the message
+                if(rcv.type == 6 || rcv.type == 8)
+                {
+                    close(csock);
+                    exit(EXIT_SUCCESS);
+                }
 
             }
         }
