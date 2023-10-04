@@ -1,2 +1,9 @@
 #pdf files
 *.pdf
+
+#vscode
+**.vscode/**
+src/.vscode/**
+
+#.o files
+*.o

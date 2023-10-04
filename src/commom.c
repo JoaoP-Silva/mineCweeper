@@ -116,13 +116,13 @@ int ServerSockInit(const char *proto, const char *portStr,
     }
 }
 
-void printBoard(int (*board)[4]){
+void printBoard(int (*board)[4][4]){
 
     for(int i = 0; i < 4; i++){
         for(int j = 0; j < 4; j++){
 
             //Map the val in the board to the respective character
-            int val = board[i][j];
+            int val = *board[i][j];
             char mappedChar;
             switch (val)
             {
@@ -150,40 +150,40 @@ void printBoard(int (*board)[4]){
 }
 
 //Copy the board from source to destination
-void copyBoard(int  (*destination)[4], int  (*source)[4]){
+void copyBoard(int  (*destination)[4][4], int  (*source)[4][4]){
     for(int i = 0; i < 4; i++){
         for(int j = 0; j < 4; j++){
-            destination[i][j] = source[i][j];
+            *destination[i][j] = *source[i][j];
         }
     }
 }
 
 //Check whether the coordenates reveal are valid. Returns 0 whether the reveal is valid and the respective error type otherwise.
-int checkCordinateReveal(int* coordinates, int  (*playerBoard)[4]){
+int checkCoordinateReveal(int* coordinates, int  (*playerBoard)[4][4]){
     int x = coordinates[0], y = coordinates[1];
     if(x >= 4 || x < 0){ return 9; }
     else if(y >= 4 || y < 0){ return 9; }
-    else if(playerBoard[x][y] != -2){ return 11; }
+    else if(*playerBoard[x][y] != -2){ return 11; }
 
     return 0;
 }
 
 //Check whether the flag insertion is valid. Returns 0 whether flag insertion is valid and the respective error type otherwise.
-int checkCoordinateFlag(int* coordinates, int  (*playerBoard)[4]){
+int checkCoordinateFlag(int* coordinates, int  (*playerBoard)[4][4]){
     int x = coordinates[0], y = coordinates[1];
     if(x >= 4 || x < 0){ return 9; }
     else if(y >= 4 || y < 0){ return 9; }
-    else if(playerBoard[x][y] != -3){ return 12; }
-    else if(playerBoard[x][y] != -2){ return 13; }
+    else if(*playerBoard[x][y] != -3){ return 12; }
+    else if(*playerBoard[x][y] != -2){ return 13; }
 
     return 0;
 }
 
 //Reset the players board
-void resetBoard(int  (*playerBoard)[4]){
+void resetBoard(int  (*playerBoard)[4][4]){
     for(int i = 0; i < 4; i++){
         for(int j = 0; j < 4; j++){
-            playerBoard[i][j] = -2;
+            *playerBoard[i][j] = -2;
         }
     }
 }
@@ -197,7 +197,7 @@ void resetBoard(int  (*playerBoard)[4]){
 int handleMessage_client(struct action msg){
     //Copy data
     int type = msg.type;
-    int (*board)[4] = msg.board;
+    int (*board)[4][4] = &msg.board;
     
 
     //Switch over the type
@@ -229,21 +229,21 @@ int handleMessage_client(struct action msg){
 
 //Input parameters are the struct action received from the client, the response struct address, 
 //the current game board and the player's board.
-//Returns: -1 whether captures an error and 1 otherwise.
-int handleMessage_server(struct action msg, struct action* response, int  (*gameBoard)[4], int* revealed, bool* started){
+void handleMessage_server(struct action msg, struct action* response, int  (*gameBoard)[4][4], int* revealed, bool* started){
 
-    int (*resBoard)[4] = response->board;
-    int *resType = response->type;
+    int (*resBoard)[4][4] = &response->board;
+    int *resType = &response->type;
     
     int type = msg.type;
     int* coordinates = msg.coordinates;
+    int x = coordinates[0], y = coordinates[1];
 
     switch (type)
     {
     //Case whether the client starts a game     
     case 0:
-        resType = 3;
-        if(!started){
+        *resType = 3;
+        if(!*started){
             //Initialize Player's board
             int playerBoard[4][4];
             for(int i = 0; i < 4; i ++){
@@ -251,82 +251,200 @@ int handleMessage_server(struct action msg, struct action* response, int  (*game
                     playerBoard[i][j] = -2;
                 }
             }
-            copyBoard(resBoard, playerBoard);
+            copyBoard(resBoard, &playerBoard);
         }
-        
+
         break;
 
     //Case whether the client tries to reveal a point 
     case 1:
-        int coordReveal = checkCoordinateReveal(coordinates, playerBoard);
+        
 
-        //Valid point reveal  
-        if(coordReveal == 0)
-        {
-            int x = coordinates[0], y = coordinates[1];
+        //If the revealed point has a bomb:
+        if(*gameBoard[x][y] == -1){
+            *resType = 8;
+            copyBoard(resBoard, gameBoard);
+        }
+        else{
+            *resBoard[x][y] = *gameBoard[x][y];
+            *revealed += 1;
 
-            //If the revealed point has a bomb:
-            if(gameBoard[x][y] == -1){
-                resType = 8;
+            //If the player reveals 13 points, the game is completed
+            if(*revealed == 13){
+                *resType = 6;
                 copyBoard(resBoard, gameBoard);
             }
             else{
-                playerBoard[x][y] = gameBoard[x][y];
-                revealed += 1;
-
-                //If the player reveals 13 points, the game is completed
-                if(revealed == 13){
-                    resType = 6;
-                    copyBoard(resBoard, gameBoard);
-                }
-                else{
-                    resType = 3;
-                    copyBoard(resBoard, playerBoard);
-                }
+                *resType = 3;
             }
         }
-        //Invalid point reveal
-        else { resType = coordReveal; }
         break;
     
     //Client tries to insert a flag
     case 2:
-        int coordFlag = checkCoordinateFlag(coordinates, playerBoard);
-
-        //Valid flag insertion
-        if(coordFlag == 0){
-
-            int x = coordinates[0], y = coordinates[1];
-            playerBoard[x][y] = -2;
-            resType = 3;
-            copyBoard(resBoard, playerBoard);
-
-        }
-        else{
-            resType = coordFlag;
-        }
+       
+        *resBoard[x][y] = -2;
+        *resType = 3;
         break;
 
     case 4:
-        int x = coordinates[0], y = coordinates[1];
-
-        //Capture whether the client is trying to remove a invalid point
-        if(x >= 4 || x < 0){ resType = 9; }
-        else if(y >= 4 || y < 0){ resType = 9; }
-
-        else{
-            resType = 3;
-            if(playerBoard[x][y] == -3){
-                playerBoard[x][y] = -2;
-                copyBoard(resBoard, playerBoard);
-            }
+        *resType = 3;
+        if(*resBoard[x][y] == -3){
+            *resBoard[x][y] = -2;
         }
+        break;
 
     case 5:
-        resetBoard(playerBoard);
-        copyBoard(resBoard, playerBoard);
+        resetBoard(resBoard);
         
     default:
         break;
+    }
+}
+
+//Input parameters are the message entered by the user, the res buffer and the pointer to player board.
+//Returns an integer >= 0 correspondind to the type whether the message is valid
+int processClientMessage(const char* message, char* res, struct action* act){
+
+    int* coordinates = act->coordinates;
+    int (*playerBoard)[4][4] = &act->board;
+
+    //If the client enter the start action
+    if(!strcmp(message, "start\n")){
+        return 0; 
+    }
+
+    //If the message starts with reveal
+    else if(!strncmp(message, "reveal", 6)){
+        if(strlen(message) != 11)
+        {
+            strcpy(res, "error: command not found");
+            return -1;
+        }
+        else
+        {
+            char  space = message[6], x = message[7], y = message[9], comma = message[8];
+            
+            if(space == ' ' && comma == ',' && (x >= '0' || x <= '9') && (y >= '0' || y <= '9')){
+                int inputCoordinates[2] = {x - '0', y - '0'};
+
+                int check = checkCoordinateReveal(inputCoordinates, &act->board);
+                if(!check)
+                {
+                    coordinates[1] = inputCoordinates[1];
+                    coordinates[2] = inputCoordinates[2];
+                    act->type = 1; 
+                    return 1; 
+                }
+                else if( check == 9 ){
+                    strcpy(res, "error: invalid cell");
+                    return -1;
+                }
+                else{
+                    strcpy(res, "error: cell already revealed");
+                    return -1;
+                }
+
+            } 
+            else
+            {
+                strcpy(res, "error: command not found");
+                return -1;
+            } 
+        }
+        
+    }
+
+    //If the message starts with flag
+    else if(!strncmp(message, "flag", 4)){
+        if(strlen(message) != 9)
+        {
+            strcpy(res, "error: command not found");
+            return -1;
+        }
+        else
+        {
+            char  space = message[4], x = message[5], y = message[7], comma = message[6];
+            if(space == ' ' && comma == ',' && (x >= '0' || x <= '9') && (y >= '0' || y <= '9')){
+                int inputCoordinates[2] = {x - '0', y - '0'};
+
+                int check = checkCoordinateFlag(inputCoordinates, playerBoard);
+                if(!check)
+                {
+                    coordinates[1] = inputCoordinates[1];
+                    coordinates[2] = inputCoordinates[2];
+                    act->type = 2;  
+                    return 2; 
+                }
+                else if( check == 9 ){
+                    strcpy(res, "error: invalid cell");
+                    return -1;
+                }
+                else if( check == 12 ){
+                    strcpy(res, "error: cell already has a flag");
+                    return -1;
+                }
+                else{
+                    strcpy(res, "error: cannot insert flag in revealed cell");
+                    return -1;
+                }
+            } 
+            else
+            {
+                strcpy(res, "error: command not found");
+                return -1;
+            } 
+        }
+    }
+
+    //If the message starts with remove_flag
+    else if(!strncmp(message, "remove_flag", 11)){
+        if(strlen(message) != 16)
+        {
+            strcpy(res, "error: command not found");
+            return -1;
+        }
+        else
+        {
+            char  space = message[11], x = message[12], y = message[14], comma = message[13];
+            if(space == ' ' && comma == ',' && (x >= '0' || x <= '9') && (y >= '0' || y <= '9'))
+            {
+                int inputCoordinates[2] = {x - '0', y - '0'};
+
+                int check = checkCoordinateFlag(inputCoordinates, playerBoard);
+                if(!check)
+                {
+                    coordinates[1] = inputCoordinates[1];
+                    coordinates[2] = inputCoordinates[2];
+                    act->type = 4;  
+                    return 4; 
+                }
+                else{
+                    strcpy(res, "error: invalid cell");
+                    return -1;
+                }
+            }
+            else
+            {
+                strcpy(res, "error: command not found");
+                return -1;
+            } 
+        }
+    }
+
+    //If its reset message
+    else if(!strcmp(message, "reset")){
+        act->type = 5; 
+        return 5; 
+    }
+    //If its exit message
+    else if(!strcmp(message, "exit")){
+        act->type = 7; 
+        return 7;
+    }
+    else
+    {
+        strcpy(res, "error: command not found");
+        return -1;
     }
 }

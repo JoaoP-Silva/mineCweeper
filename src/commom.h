@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include <stdbool.h>
 
 struct action {
     int type;
@@ -22,20 +23,23 @@ void addrToStr(const struct sockaddr *addr, char *str, size_t strSize);
 int ServerSockInit(const char *proto, const char *portStr,
                    struct sockaddr_storage *storage);
 
-void printBoard(int  (*board)[4]);
+void printBoard(int  (*board)[4][4]);
 
-void copyBoard(int  (*destination)[4], int  (*source)[4]);
+void copyBoard(int  (*destination)[4][4], int  (*source)[4][4]);
 
-int checkCoordinateReveal(int* coordinates, int  (*playerBoard)[4]);
+int checkCoordinateReveal(int* coordinates, int  (*playerBoard)[4][4]);
 
-int checkCoordinateFlag(int* coordinates, int  (*playerBoard)[4]);
+int checkCoordinateFlag(int* coordinates, int  (*playerBoard)[4][4]);
 
-void resetBoard(int  (*playerBoard)[4]);
+void resetBoard(int  (*playerBoard)[4][4]);
 
 //Client receives a message
 int handleMessage_client(struct action msg);
 
 //Server receives a message
-int handleMessage_server(struct action msg, struct action* response, int  (*gameBoard)[4], int* revealed, bool* started);
+void handleMessage_server(struct action msg, struct action* response, int  (*gameBoard)[4][4], int* revealed, bool* started);
+
+//Processes the client message
+int processClientMessage(const char* message, char* res, struct action* act);
 
 #endif

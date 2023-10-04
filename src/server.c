@@ -62,13 +62,21 @@ int main(int argc, char **argv)
         logExit("Error opening the file");
     }
 
-    else{
-        for(int i = 0; i < 4; i ++){
-            for(int j = 0; j < 4; j++){
-                int val;
-                fscanf(fp,"%*[^0-9]%d", &val);
-                gameBoard[i][j] = val;
-            }
+    char line[100]; 
+
+    char *token;
+    int val;
+
+    //Read the game board
+    int i = -1;
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        i++; int j = -1;
+        token = strtok(line, ",");
+        while (token != NULL) {
+            j++;
+            val = atoi(token); // Converte o token em um inteiro
+            gameBoard[i][j] = val;
+            token = strtok(NULL, ",");
         }
     }
 
@@ -94,16 +102,26 @@ int main(int argc, char **argv)
          
         char buf[sizeof(struct action)];
         while(1){
-            memset(buf, 0, BUFSIZ);
-            size_t count = read(csock, buf, sizeof(struct action) - 1);
+            memset(buf, 0, sizeof(struct action));
+            size_t count = read(csock, buf, sizeof(struct action));
             if (count == sizeof(struct action)) {
-                struct  action recv;
-                memcpy(&recv, buf, sizeof(struct action));
 
-                struct action* res = handleMessage_server(recv);
+                struct  action rcv, res;
+                memcpy(&rcv, buf, sizeof(struct action));
+                handleMessage_server(rcv, &res, &gameBoard, &revealed, &startedGame);
+
+                //Whether the client win, lose or exit, close connection
+                if(rcv.type == 7 || res.type == 8 || res.type == 6)
+                {
+                    close(csock);
+                    exit(EXIT_SUCCESS);
+                }
+
+                memcpy(buf, &res, sizeof(struct action));
+                send(csock, buf, sizeof(struct action), 0);
+
             }
         }
-        
     }
     exit(EXIT_SUCCESS);
 }
