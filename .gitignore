@@ -7,3 +7,6 @@ src/.vscode/**
 
 #.o files
 *.o
+
+#bin dir
+bin/*

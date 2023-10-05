@@ -303,6 +303,7 @@ void handleMessage_server(struct action msg, struct action* response, int  (*gam
         break;
 
     case 5:
+        *revealed = 0;
         resetBoard(resBoard);
         
     default:

@@ -113,23 +113,27 @@ int main(int argc, char **argv)
                 if(rcv.type == 7)
                 {
                     close(csock);
-                    exit(EXIT_SUCCESS);
+                    startedGame = 0;
+                    break;
                 }
-
-                handleMessage_server(rcv, &res, &gameBoard, &revealed, &startedGame);
-
-                //Captures whether is the game start
-                if(rcv.type == 0 && !startedGame){ startedGame = true; }
-
-                memcpy(buf, &res, sizeof(struct action));
-                send(csock, buf, sizeof(struct action), 0);
-
-                //Whether the client win or lose, close connection after send the message
-                if(rcv.type == 6 || rcv.type == 8)
+                else
                 {
-                    close(csock);
-                    exit(EXIT_SUCCESS);
+                    handleMessage_server(rcv, &res, &gameBoard, &revealed, &startedGame);
+
+                    //Captures whether is the game start
+                    if(rcv.type == 0 && !startedGame){ startedGame = true; }
+    
+                    memcpy(buf, &res, sizeof(struct action));
+                    send(csock, buf, sizeof(struct action), 0);
+    
+                    //Whether the client win or lose, close connection after send the message
+                    if(rcv.type == 6 || rcv.type == 8)
+                    {
+                        close(csock);
+                        exit(EXIT_SUCCESS);
+                    }
                 }
+                
 
             }
         }
