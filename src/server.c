@@ -47,9 +47,6 @@ int main(int argc, char **argv)
     {
         logExit("Error at listen");
     }
-    char addrStr[BUFSIZ];
-    addrToStr(addr, addrStr, BUFSIZ);
-    printf("Bound to %s, waiting connection\n", addrStr);
 
     if(strcmp(argv[3], "-i") != 0){
         logExit("Parameter error");
@@ -96,9 +93,7 @@ int main(int argc, char **argv)
             logExit("Accept error");
         }
 
-        char caddrStr[BUFSIZ];
-        addrToStr(caddr, caddrStr, BUFSIZ);
-        printf("Connection from %s\n", caddrStr);
+        printf("client connected\n");
          
         char buf[sizeof(struct action)];
         while(1){
@@ -114,6 +109,7 @@ int main(int argc, char **argv)
                 {
                     close(csock);
                     startedGame = 0;
+                    printf("client disconnected\n");
                     break;
                 }
                 else
@@ -125,13 +121,6 @@ int main(int argc, char **argv)
     
                     memcpy(buf, &res, sizeof(struct action));
                     send(csock, buf, sizeof(struct action), 0);
-    
-                    //Whether the client win or lose, close connection after send the message
-                    if(rcv.type == 6 || rcv.type == 8)
-                    {
-                        close(csock);
-                        exit(EXIT_SUCCESS);
-                    }
                 }
                 
 

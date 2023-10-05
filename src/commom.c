@@ -304,7 +304,9 @@ void handleMessage_server(struct action msg, struct action* response, int  (*gam
 
     case 5:
         *revealed = 0;
+        *resType = 3;
         resetBoard(resBoard);
+        printf("starting new game\n");
         
     default:
         break;

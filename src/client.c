@@ -31,18 +31,18 @@ int main(int argc, char **argv)
         logExit("Error at connect\n");
     }
 
-    char addrStr[BUFSIZ];
-    addrToStr(addr, addrStr, BUFSIZ);
-    printf("Connected to %s\n", addrStr);
-
     char buf[BUFSIZ];
     int inputType;
 
     struct action act;
     act.coordinates[0] = -1;
     act.coordinates[1] = -1;
+
     //First iteration
     bool first = 1;
+
+    //Client win or loss
+    bool gameover = 0;
     while(1){
         
         //Read from stdin
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
         //Buffer to error messages
         char errbuf[BUFSIZ];
     
-        if(first)
+        if(first && !gameover)
         {
             while((strcmp(buf, "start\n") != 0) && (strcmp(buf, "exit\n") != 0)){
                 printf("Game hasn't started yet.\n");
@@ -60,6 +60,16 @@ int main(int argc, char **argv)
                 fgets(buf, BUFSIZ, stdin);
             }
             first = 0;
+        }
+
+        else if(gameover)
+        {
+            while((strcmp(buf, "reset\n") != 0) && (strcmp(buf, "exit\n") != 0)){
+                printf("Game over: enter reset or exit.\n");
+                memset(buf, 0, BUFSIZ);
+                fgets(buf, BUFSIZ, stdin);
+            }
+            gameover = 0;
         }
 
         do
@@ -76,7 +86,7 @@ int main(int argc, char **argv)
 
         char sendbuf[sizeof(struct action)];
         memcpy(sendbuf, &act, sizeof(struct action));
-        size_t count = send(s, sendbuf, sizeof(struct action), 0);
+        send(s, sendbuf, sizeof(struct action), 0);
 
         //Whether client required exit
         if(inputType == 7)
@@ -91,12 +101,14 @@ int main(int argc, char **argv)
         {
             memcpy(&act, recvbuf, sizeof(struct action));
             int r = handleMessage_client(act);
-            if(r == -1){ return 0; }
-            else if(r == 0)
-            {
+            if(r == -1)
+            { 
                 close(s);
-                exit(EXIT_SUCCESS);
+                return 0; 
             }
+            // Client win or loss
+            else if(r == 0)
+            { gameover = true; }
         }
     }
     
