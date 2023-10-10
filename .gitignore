@@ -10,3 +10,6 @@ src/.vscode/**
 
 #bin dir
 bin/*
+
+#Input files
+*.txt

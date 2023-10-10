@@ -1,4 +1,4 @@
 all:
-	gcc -Wall -g -c src/commom.c
-	gcc -Wall -g src/client.c commom.o -o bin/client
-	gcc -Wall -g src/server.c commom.o -o bin/server
+	gcc -Wall  -c src/commom.c -o obj/commom.o
+	gcc -Wall  src/client.c obj/commom.o -o bin/client
+	gcc -Wall  src/server.c obj/commom.o -o bin/server
